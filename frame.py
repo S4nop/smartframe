@@ -1,6 +1,14 @@
 import numpy as np
 import cv2
 import subprocess
+import os
+
+global imgList
+global imgNum
+
+def updateImageList():
+    path = "./img"
+    return os.listdir(path);
 
 def getFrameSize():
     cmd = ['xrandr']
@@ -14,14 +22,27 @@ def getFrameSize():
     width, height = resolution.decode('utf-8').split("x")
     return width, height 
 
-def showPicture(imgName):
+def showPicture():
     width, height = getFrameSize()
-    img = cv2.imread(imgName)
-    img = cv2.resize(img, (int(width), int(height)), interpolation = cv2.INTER_AREA)
-    cv2.imshow("res", img)
-    cv2.waitKey(0)
-        
-if __name__=="__main__":
-    showPicture("./img/elise-st-clair-53eLrhkux-k-unsplash.jpg")
-    
+    imgCV = cv2.imread("./img/" + imgList[imgNum])
+    imgCV = cv2.resize(imgCV, (int(width), int(height)), interpolation = cv2.INTER_AREA)
+    cv2.setMouseCallback("res", showNextImg)
+    cv2.imshow("res", imgCV)
+    cv2.waitKey(100)
 
+def showNextImg(event, x, y, flags, param):
+    global imgList, imgNum
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if imgNum == len(imgList) - 1:
+            imgNum = 0
+            print("imgNum = 0")
+        else:
+            imgNum = imgNum + 1
+            print(imgNum)
+
+
+if __name__=="__main__":
+    imgList = updateImageList()
+    imgNum = 0
+    while(1):
+        showPicture()
