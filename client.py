@@ -1,7 +1,7 @@
 import requests
 import os
 
-class ComServer:
+class PhotoUpdater:
 
     def svFile(self, content, filename):
         with open("./img/" + filename, "wb") as file:
@@ -11,6 +11,10 @@ class ComServer:
         f = open("./unum", 'r')
         unum = f.readline()
         return unum == number
+
+    def updateUpNum(self, number):
+        f = open("./unum", 'w')
+        f.write(number)
 
     def getUpdatedPhotos(self, uList):
         imgList = os.listdir("./img")
@@ -36,11 +40,12 @@ class ComServer:
 
 
 if __name__ == "__main__":
-    cs = ComServer()
+    cs = PhotoUpdater()
     chkRslt = cs.idCheck("http://127.0.0.1:2905", "rshtiger")
-    if not cs.chkUpdate(chkRslt.split("&!&")[0]):
+    upNumber = chkRslt.split("&!&")[0]
+    if not cs.chkUpdate(upNumber):
         newPhotos = cs.getUpdatedPhotos(chkRslt.split("&!&")[1])
         print("new Photos: ", newPhotos)
         for photo in newPhotos:
             cs.getPhoto("http://127.0.0.1:2905", photo, "rshtiger")
-    #cs.getPhoto("http://127.0.0.1:2905", "20190215_170720.jpg", "rshtiger")
+        cs.updateUpNum(upNumber)
