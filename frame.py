@@ -62,7 +62,21 @@ class PictureViewer:
     imgList = []
     imgNum = 0
 
-
+    def getProperSizeOfImg(self,img):
+        width, height = self.getFrameSize()
+        imHeight = img.shape[0]
+        imWidth = img.shape[1]
+        width = int(width)
+        height = int(height)
+        newWidth = imWidth * (int(height) / imHeight)
+        newHeight = imHeight * (int(width) / imWidth)
+        
+        if imHeight / imWidth > height / width:
+            return newWidth, height, abs(int((width - newWidth) / 2)) + 2, 0
+        else:
+            return width, newHeight, 0, abs(int((height - newHeight) / 2)) + 2 
+            
+        
     def updateImageList(self):
         path = "./img"
         self.imgList =  os.listdir(path);
@@ -80,11 +94,15 @@ class PictureViewer:
         return width, height 
 
     def showPicture(self):
-        width, height = self.getFrameSize()
         imgCV = cv2.imread("./img/" + self.imgList[self.imgNum])
+        width, height, bWidth, bHeight = self.getProperSizeOfImg(imgCV)
         imgCV = cv2.resize(imgCV, (int(width), int(height)), interpolation = cv2.INTER_AREA)
-        cv2.setMouseCallback("res", self.showNextImg)
-        cv2.imshow("res", imgCV)
+        imgCV = cv2.copyMakeBorder(imgCV, bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
+        cv2.setMouseCallback("Viewr", self.showNextImg)
+        #cv2.namedWindow("Viewr", cv2.WINDOW_NORMAL)
+
+        cv2.imshow("Viewr", imgCV)
+        cv2.moveWindow("Viewr", 0, -24)
         cv2.waitKey(100)
 
     def showNextImg(self, event, x, y, flags, param):
@@ -105,7 +123,6 @@ class PictureViewer:
             self.updateImageList()
             self.setImgNum(0)     
             updated = 0
-        self.showPicture()
 
 def photoViewer_Thread():
     print("PhotoViewr_Thread_Started")
@@ -113,6 +130,7 @@ def photoViewer_Thread():
     pv = PictureViewer()
     pv.updateImageList()
     while True:
+        pv.showPicture()
         pv.chkImgUpdated()
     
 def photoUpdater_Thread(server, uid):
