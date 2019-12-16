@@ -8,10 +8,10 @@ import requests
 
 updated = 0
 
-class PhotoUpdater:
+class FileUpdater:
 
     def svFile(self, content, filename):
-        with open("./img/" + filename, "wb") as file:
+        with open("./usr/" + filename, "wb") as file:
             file.write(content)
 
     def chkUpdate(self, number):
@@ -24,9 +24,9 @@ class PhotoUpdater:
         f.write(number)
 
     def getUpdatedPhotos(self, uList):
-        imgList = os.listdir("./img")
-        svImgList = uList.split(",")
-        return list(set(svImgList) - set(imgList))
+        fileList = os.listdir("./usr")
+        svfileList = uList.split(",")
+        return list(set(svfileList) - set(fileList))
 
     def idCheck(self, server, id):
         param = {
@@ -50,7 +50,7 @@ class PhotoUpdater:
         upNumber = chkRslt.split("&!&")[0]
         if not self.chkUpdate(upNumber):
             newPhotos = self.getUpdatedPhotos(chkRslt.split("&!&")[1])
-            print("new Photos: ", newPhotos)
+            print("new Photos/Videos: ", newPhotos)
             for photo in newPhotos:
                 self.getPhoto(server, photo, uid)
             self.updateUpNum(upNumber)
@@ -58,9 +58,9 @@ class PhotoUpdater:
         sleep(10)
 
 
-class PictureViewer:
-    imgList = []
-    imgNum = 0
+class FrameViewer:
+    fileList = []
+    fileNum = 0
 
     def getProperSizeOfImg(self,img):
         width, height = self.getFrameSize()
@@ -77,9 +77,9 @@ class PictureViewer:
             return width, newHeight, 0, abs(int((height - newHeight) / 2)) + 2 
             
         
-    def updateImageList(self):
-        path = "./img"
-        self.imgList =  os.listdir(path);
+    def updateFileList(self):
+        path = "./usr"
+        self.fileList =  os.listdir(path);
 
     def getFrameSize(self):
         cmd = ['xrandr']
@@ -93,9 +93,15 @@ class PictureViewer:
         width, height = resolution.decode('utf-8').split("x")
         return width, height 
 
-    def showPicture(self):
-        imgCV = cv2.imread("./img/" + self.imgList[self.imgNum])
-        width, height, bWidth, bHeight = self.getProperSizeOfImg(imgCV)
+    def chkPicOrVid(self, fName):
+        pic = ['jpg', 'jpeg', 'png', 'bmp', 'raw']
+        fSplit = fName.split('.')
+        if fSplit[len(fSplit) - 1] in pic:
+            return 1
+        else:
+            return 2
+
+    def showFrame(self, imgCV, width, height, bWidth, bHeight, waitTime):
         imgCV = cv2.resize(imgCV, (int(width), int(height)), interpolation = cv2.INTER_AREA)
         imgCV = cv2.copyMakeBorder(imgCV, bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
         cv2.setMouseCallback("Viewr", self.showNextImg)
@@ -103,45 +109,69 @@ class PictureViewer:
 
         cv2.imshow("Viewr", imgCV)
         cv2.moveWindow("Viewr", 0, -24)
-        cv2.waitKey(100)
+        cv2.waitKey(waitTime)
+        return self.fileNum
 
+    def showVideo(self, vName):
+        nFileNum = self.fileNum
+        cap = cv2.VideoCapture(vName)
+        ret, frame = cap.read()
+        width, height, bWidth, bHeight = self.getProperSizeOfImg(frame)
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            if self.showFrame(frame, width, height, bWidth, bHeight, 5) != nFileNum:
+                break
+        cap.release()
+
+    def showPicture(self, pName):
+        imgCV = cv2.imread(pName)
+        width, height, bWidth, bHeight = self.getProperSizeOfImg(imgCV)
+        self.showFrame(imgCV, width, height, bWidth, bHeight, 100)
+        
     def showNextImg(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
-            if self.imgNum == len(self.imgList) - 1:
-                self.imgNum = 0
-                print("imgNum = 0")
+            if self.fileNum == len(self.fileList) - 1:
+                self.fileNum = 0
+                print("fileNum = 0")
             else:
-                self.imgNum = self.imgNum + 1
-                print(self.imgNum)
+                self.fileNum = self.fileNum + 1
+                print(self.fileNum)
     
-    def setImgNum(self, num):
-        self.imgNum = num
+    def setfileNum(self, num):
+        self.fileNum = num
     
-    def chkImgUpdated(self):
+    def chkFileUpdated(self):
         global updated
         if updated == 1:
-            self.updateImageList()
-            self.setImgNum(0)     
+            self.updateFileList()
+            self.setfileNum(0)     
             updated = 0
+            
+    def frameWork(self):
+        if self.chkPicOrVid(self.fileList[self.fileNum]) == 1:
+            self.showPicture("./usr/" + self.fileList[self.fileNum])
+        else:
+            self.showVideo("./usr/" + self.fileList[self.fileNum]) 
+            
 
-def photoViewer_Thread():
-    print("PhotoViewr_Thread_Started")
+def FrameViewer_Thread():
+    print("FrameViewer_Thread_Started")
     global updated
-    pv = PictureViewer()
-    pv.updateImageList()
+    pv = FrameViewer()
+    pv.updateFileList()
     while True:
-        pv.showPicture()
-        pv.chkImgUpdated()
+        pv.frameWork()
+        pv.chkFileUpdated()
     
-def photoUpdater_Thread(server, uid):
-    print("PhotoUpdater_Thread_Started")
-    cs = PhotoUpdater()
+def FileUpdater_Thread(server, uid):
+    print("FileUpdater_Thread_Started")
+    cs = FileUpdater()
     while True:
         cs.updateJob(server, uid)
 
 if __name__ == "__main__":
-   vw_thread = threading.Thread(target = photoViewer_Thread) 
-   up_thread = threading.Thread(target = photoUpdater_Thread, args=("http://192.168.43.121:2905", "rshtiger")) 
+   vw_thread = threading.Thread(target = FrameViewer_Thread) 
+   up_thread = threading.Thread(target = FileUpdater_Thread, args=("http://192.168.43.121:2905", "rshtiger")) 
    up_thread.daemon=True
    vw_thread.daemon=True
    up_thread.start()
