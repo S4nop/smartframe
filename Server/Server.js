@@ -6,17 +6,8 @@ var app = express();
 var fs = require('fs');
 var done = false;
 
-app.post('/api/photo', multer({dest: './tmp/'}).single('userPhoto'), 
-    function(req, res){
-        var id = req.body.id;
-        var fName = req.file.originalname;
-        
-        console.log(id);
-        console.log(fName);
-        fs.renameSync('./tmp/' + req.file.filename, './' + id + '/' + fName);
-        res.end("File uploaded.\n" + JSON.stringify(id + '/' + fName));
-        udate(id);
-    }
+app.post('/api/send', multer({dest: './tmp/'}).single('userFile'), 
+    svUploaded
 );
 
 app.get('/idcheck', function(req, res){
@@ -53,4 +44,15 @@ function udate(id){
             console.log(id + " :: Time updated")
         })
     });
+}
+
+function svUploaded(req, res){
+    var id = req.body.id;
+    var fName = req.file.originalname;
+    
+    console.log(id);
+    console.log(fName);
+    fs.renameSync('./tmp/' + req.file.filename, './' + id + '/' + fName);
+    res.end("File uploaded.\n" + JSON.stringify(id + '/' + fName));
+    udate(id);
 }
