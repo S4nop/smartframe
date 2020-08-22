@@ -15,12 +15,12 @@ class FileUpdater:
             file.write(content)
 
     def chkUpdate(self, number):
-        f = open("./unum", 'r')
+        f = open("Client/data/fileList", 'r')
         unum = f.readline()
         return unum == number
 
     def updateUpNum(self, number):
-        f = open("./unum", 'w')
+        f = open("Client/data/fileList", 'w')
         f.write(number)
 
     def getUpdatedPhotos(self, uList):

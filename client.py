@@ -4,20 +4,20 @@ import os
 class PhotoUpdater:
 
     def svFile(self, content, filename):
-        with open("./img/" + filename, "wb") as file:
+        with open("./data/" + filename, "wb") as file:
             file.write(content)
 
     def chkUpdate(self, number):
-        f = open("./unum", 'r')
+        f = open("Client/data/fileList", 'r')
         unum = f.readline()
         return unum == number
 
     def updateUpNum(self, number):
-        f = open("./unum", 'w')
+        f = open("Client/data/fileList", 'w')
         f.write(number)
 
     def getUpdatedPhotos(self, uList):
-        imgList = os.listdir("./img")
+        imgList = os.listdir("Client/data")
         svImgList = uList.split(",")
         return list(set(svImgList) - set(imgList))
 
