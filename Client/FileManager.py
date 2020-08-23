@@ -3,17 +3,20 @@ import pandas as pd
 
 class FileManager:
     data: pd
-
-    def loadFileList(self):
-        self.data = pd.read_csv("data/fileList", sep='?', index_col=0)
+    def __init__(self):
+        self.__loadFileList()
 
     def chkIsImage(self, idx):
-        if self.data[idx].TYPE == "IMG":
+        if self.data.TYPE.values[idx] == "IMG":
             return True
         return False
 
     def getNumOfFiles(self):
-        return self.data.size()
+        return len(self.data)
 
     def getFilenameByIdx(self, idx):
-        return self.data[idx].FILENAME
+        return "./data/"+self.data.FILENAME.values[idx]
+
+    def __loadFileList(self):
+        self.data = pd.read_csv("data/fileList", sep='?', index_col=0)
+
