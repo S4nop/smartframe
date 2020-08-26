@@ -10,7 +10,7 @@ class MediaManager:
         image = cv2.imread(filename)
         if image is None:
             return None
-        image = self.__resize([image, ])[0]
+        image = cv2.cvtColor(self.__resize([image, ])[0], cv2.COLOR_BGR2RGB)
         return QPixmap.fromImage(self.__toQImage([image, ])[0])
 
     def loadVideo(self, filename):
@@ -22,7 +22,9 @@ class MediaManager:
 
         while(cap.isOpened()):
             ret, frame = cap.read()
-            frames.append(frame)
+            if not ret:
+                break
+            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
         frames = self.__toQImage(self.__resize(frames))
 

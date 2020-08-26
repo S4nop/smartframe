@@ -26,27 +26,31 @@ class MainForm(QMainWindow):
         self.imageLabel = QLabel()
         self.imageLabel.setBackgroundRole(QPalette.Base)
         self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+        self.setCentralWidget(self.imageLabel)
         #self.imageLabel.setScaledContents(True)
 
     def work_inThread(self):
         fm = FileManager()
-        mm = MediaManager()
         num = fm.getNumOfFiles()
         for i in range(0, num):
             filename = fm.getFilenameByIdx(i)
-            viewer_thread = threading.Thread(target=self.openMedia_inThread, args=(mm.loadImage(filename), fm.chkIsImage(i)), daemon=True)
+            viewer_thread = threading.Thread(target=self.openMedia_inThread, args=(filename, fm.chkIsImage(i)), daemon=True)
             viewer_thread.start()
             viewer_thread.join()
 
-    def openMedia_inThread(self, image=None, isImage=True):
-        if image == None:
+    def openMedia_inThread(self, filename=None, isImage=True):
+        if filename == None:
             return
 
+        mm = MediaManager()
         if isImage:
-            self.imageLabel.setPixmap(image)
+            self.imageLabel.setPixmap(mm.loadImage(filename))
             self.setCentralWidget(self.imageLabel)
         else:
-            pass
+            frames = mm.loadVideo(filename)
+            for frame in frames:
+                self.imageLabel.setPixmap(frame)
+                time.sleep(0.0422225)
         time.sleep(3)
 
 
