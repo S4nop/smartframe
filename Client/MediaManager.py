@@ -55,9 +55,10 @@ class MediaManager:
     def __resize(self, imgs):
         first_image = imgs[0]
         width, height, bWidth, bHeight = self.__getProperSizeOfImg(first_image)
-        for i in range(0, len(imgs)):
-            imgs[i] = cv2.resize(imgs[i], (int(width), int(height)), interpolation=cv2.INTER_AREA)
-            imgs[i] = cv2.copyMakeBorder(imgs[i], bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
+        if not imgs[0].shape[0] == height and not imgs[0].shape[1] == width:
+            for i in range(0, len(imgs)):
+                imgs[i] = cv2.resize(imgs[i], (int(width), int(height)), interpolation=cv2.INTER_AREA)
+                imgs[i] = cv2.copyMakeBorder(imgs[i], bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
 
         return imgs
 

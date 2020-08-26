@@ -3,6 +3,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import Qt, QDir
 from Client.FileManager import FileManager
 from Client.MediaManager import MediaManager
+from Client.BufferManager import BufferManager
 import threading, time
 
 class MainForm(QMainWindow):
@@ -10,6 +11,9 @@ class MainForm(QMainWindow):
         super().__init__()
         self.initUI()
         self.show()
+        self.buffer_manager = BufferManager()
+        self.media_manager = MediaManager()
+        self.file_manager = FileManager()
         work_thread = threading.Thread(target=self.work_inThread, daemon=True)
         work_thread.start()
 
@@ -27,30 +31,43 @@ class MainForm(QMainWindow):
         self.imageLabel.setBackgroundRole(QPalette.Base)
         self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.setCentralWidget(self.imageLabel)
-        #self.imageLabel.setScaledContents(True)
 
     def work_inThread(self):
         fm = FileManager()
         num = fm.getNumOfFiles()
         for i in range(0, num):
-            filename = fm.getFilenameByIdx(i)
-            viewer_thread = threading.Thread(target=self.openMedia_inThread, args=(filename, fm.chkIsImage(i)), daemon=True)
+            viewer_thread = threading.Thread(target=self.showMedia_inThread, daemon=True)
             viewer_thread.start()
+            loader_thread = threading.Thread(target=self.loadMedia_inThread, args=(i, ), daemon=True)
+            loader_thread.start()
             viewer_thread.join()
+            loader_thread.join()
 
-    def openMedia_inThread(self, filename=None, isImage=True):
-        if filename == None:
-            return
+    def loadMedia_inThread(self, file_idx, toPrev=False):
+        filename = self.file_manager.getFilenameByIdx(file_idx)
+        isImage = self.file_manager.chkIsImage(file_idx)
+        targ = self.media_manager.loadImage(filename) if isImage else self.media_manager.loadVideo(filename)
 
-        mm = MediaManager()
-        if isImage:
-            self.imageLabel.setPixmap(mm.loadImage(filename))
-            self.setCentralWidget(self.imageLabel)
+        if toPrev:
+            self.buffer_manager.pushToNext()
+            self.buffer_manager.setPrevBuffer([file_idx, targ])
         else:
-            frames = mm.loadVideo(filename)
-            for frame in frames:
+            self.buffer_manager.pullToPrev()
+            self.buffer_manager.setNextBuffer([file_idx, targ])
+
+    def showMedia_inThread(self):
+        idx, med = self.buffer_manager.getMainBuffer()
+        if idx < 0:
+            return
+        isImage = self.file_manager.chkIsImage(idx)
+
+        if isImage:
+            self.imageLabel.setPixmap(med)
+            self.setCentralWidget(self.imageLabel)
+            time.sleep(3)
+        else:
+            for frame in med:
                 self.imageLabel.setPixmap(frame)
                 time.sleep(0.0422225)
-        time.sleep(3)
 
 
