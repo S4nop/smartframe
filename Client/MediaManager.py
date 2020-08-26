@@ -1,63 +1,75 @@
 import os
 import cv2
 import subprocess
+import threading
 from PyQt5.QtGui import *
 import numpy as np
+from Client.BufferManager import BufferManager
 
 
 class MediaManager:
-    def loadImage(self, filename):
+    buffer_manager: BufferManager
+
+    def __init__(self, buffer_manager):
+        self.buffer_manager = buffer_manager
+
+    def loadImage(self, filename, toPrev=False):
         image = cv2.imread(filename)
         if image is None:
             return None
-        image = self.__resize([image, ])[0]
-        return QPixmap.fromImage(self.__toQImage([image, ])[0])
+        image = cv2.cvtColor(self.__resize(image, self.__getProperSizeOfImg(image)), cv2.COLOR_BGR2RGB)
+        result = QPixmap.fromImage(self.__toQImage(image))
+        if toPrev:
+            self.buffer_manager.putPrevBuffer([True, result])
+        else:
+            self.buffer_manager.putNextBuffer([True, result])
 
-    def loadVideo(self, filename):
-        frames = []
+    def loadVideo(self, filename, toPrev=False):
         cap = cv2.VideoCapture(filename)
-
         if cap is None:
             return None
 
-        while(cap.isOpened()):
+        if toPrev:
+            self.buffer_manager.putPrevBuffer([False, cap])
+        else:
+            self.buffer_manager.putNextBuffer([False, cap])
+
+    def sendFramesToBuffer(self, cap):
+        ret, frame = cap.read()
+        width, height, bWidth, bHeight = self.__getProperSizeOfImg(frame)
+        while cap.isOpened():
             ret, frame = cap.read()
-            frames.append(frame)
+            if not ret:
+                break
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = self.__toQImage(self.__resize(frame, [width, height, bWidth, bHeight]))
+            frame = QPixmap.fromImage(frame)
+            self.buffer_manager.addToQueue([True, frame])
+            self.buffer_manager.queueTaskDone()
 
-        frames = self.__toQImage(self.__resize(frames))
+        self.buffer_manager.addToQueue([False, None])
+        self.buffer_manager.queueTaskDone()
 
-        for i in range(0, len(frames)):
-            frames[i] = QPixmap.fromImage(frames[i])
+    def __toQImage(self, im, copy=False):
+        if im.dtype == np.uint8:
+            if len(im.shape) == 2:
+                qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_Indexed8)
+                qim.setColorTable([qRgb(i, i, i) for i in range(256)])
+                return qim.copy() if copy else qim
 
-        return frames
+            elif len(im.shape) == 3:
+                if im.shape[2] == 3:
+                    qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_RGB888)
+                    return qim.copy() if copy else qim
+                elif im.shape[2] == 4:
+                    qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_ARGB32)
+                    return qim.copy() if copy else qim
 
-    def __toQImage(self, ims, copy=False):
-        results = []
-        for i in range(0, len(ims)):
-            if ims[i].dtype == np.uint8:
-                if len(ims[i].shape) == 2:
-                    qim = QImage(ims[i].data, ims[i].shape[1], ims[i].shape[0], ims[i].strides[0], QImage.Format_Indexed8)
-                    qim.setColorTable([qRgb(i, i, i) for i in range(256)])
-                    results.append(qim.copy() if copy else qim)
-
-                elif len(ims[i].shape) == 3:
-                    if ims[i].shape[2] == 3:
-                        qim = QImage(ims[i].data, ims[i].shape[1], ims[i].shape[0], ims[i].strides[0], QImage.Format_RGB888)
-                        results.append(qim.copy() if copy else qim)
-                    elif ims[i].shape[2] == 4:
-                        qim = QImage(ims[i].data, ims[i].shape[1], ims[i].shape[0], ims[i].strides[0], QImage.Format_ARGB32)
-                        results.append(qim.copy() if copy else qim)
-
-        return results
-
-    def __resize(self, imgs):
-        first_image = imgs[0]
-        width, height, bWidth, bHeight = self.__getProperSizeOfImg(first_image)
-        for i in range(0, len(imgs)):
-            imgs[i] = cv2.resize(imgs[i], (int(width), int(height)), interpolation=cv2.INTER_AREA)
-            imgs[i] = cv2.copyMakeBorder(imgs[i], bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
-
-        return imgs
+    def __resize(self, img, size):
+        width, height, bWidth, bHeight = size
+        img = cv2.resize(img, (int(width), int(height)), interpolation=cv2.INTER_AREA)
+        img = cv2.copyMakeBorder(img, bHeight, bHeight, bWidth, bWidth, cv2.BORDER_CONSTANT, value=[0,0,0])
+        return img
 
     def __getProperSizeOfImg(self, img):
         width, height = self.__getFrameSize()
