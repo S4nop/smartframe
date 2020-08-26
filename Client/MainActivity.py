@@ -4,9 +4,13 @@ from PyQt5.QtCore import Qt, QDir
 from Client.FileManager import FileManager
 from Client.MediaManager import MediaManager
 from Client.BufferManager import BufferManager
+import Client.Utils as utils
 import threading, time
 
-class MainForm(QMainWindow):
+class MainWindow(QMainWindow):
+    viewer_thread: threading.Thread
+    loader_thread: threading.Thread
+
     def __init__(self):
         super().__init__()
         self.initUI()
@@ -18,19 +22,12 @@ class MainForm(QMainWindow):
         work_thread.start()
 
     def initUI(self):
-        self.__hideTitleBar()
-        self.showFullScreen()
+        self.frame_width, self.frame_height = utils.getFrameSize()
         self.__initImageViewer()
+        self.__initNextPrevBtn()
+        self.__initMenuButton()
         self.setWindowTitle("Image Viewer")
-
-    def __hideTitleBar(self):
-        self.setWindowFlag(Qt.FramelessWindowHint)
-
-    def __initImageViewer(self):
-        self.imageLabel = QLabel()
-        self.imageLabel.setBackgroundRole(QPalette.Base)
-        self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-        self.setCentralWidget(self.imageLabel)
+        self.showFullScreen()
 
     def work_inThread(self):
         fm = FileManager()
@@ -55,16 +52,55 @@ class MainForm(QMainWindow):
 
         if isImage:
             self.imageLabel.setPixmap(med)
-            self.setCentralWidget(self.imageLabel)
             time.sleep(3)
         else:
             sender_thread = threading.Thread(target=self.media_manager.sendFramesToBuffer, args=(med,), daemon=True)
             sender_thread.start()
-            while(True):
+            while True:
                 ret, frame = self.buffer_manager.popFromQueue()
                 if not ret:
                     return
                 self.imageLabel.setPixmap(frame)
                 time.sleep(0.0422225)
 
+    def prevBtn_Click(self):
+        pass
 
+    def nextBtn_Click(self):
+        pass
+
+    def menuBtn_Click(self):
+        pass
+
+    def __initImageViewer(self):
+        self.imageLabel = QLabel(self)
+        self.imageLabel.setBackgroundRole(QPalette.Base)
+        self.imageLabel.resize(self.frame_width, self.frame_height)
+        self.imageLabel.move(0, 0)
+        self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
+
+    def __initMenuButton(self):
+        self.menuButton = QPushButton('MENU', self)
+        self.menuButton.setGeometry(int(self.frame_width / 10 * 9), 0, int(self.frame_width / 10), int(self.frame_height / 6))
+        self.menuButton.setStyleSheet("background-color : white")
+        self.menuButton.clicked.connect(self.menuBtn_Click)
+
+    def __initNextPrevBtn(self):
+        self.prevButton = QPushButton(self)
+        self.prevButton.setGeometry(0, 0, int(self.frame_width / 5), self.frame_height)
+        self.prevButton.clicked.connect(self.prevBtn_Click)
+        self.__makeInvisible(self.prevButton)
+        self.nextButton = QPushButton(self)
+        self.nextButton.setGeometry(int(self.frame_width / 5 * 4), 0, int(self.frame_width / 5), self.frame_height)
+        self.nextButton.clicked.connect(self.nextBtn_Click)
+        self.__makeInvisible(self.nextButton)
+
+    def __makeInvisible(self, widget):
+        opacity_effect = QGraphicsOpacityEffect()
+        opacity_effect.setOpacity(0)
+        widget.setGraphicsEffect(opacity_effect)
+
+    def __initPrevBtn(self):
+        opacity_effect = QGraphicsOpacityEffect()
+        opacity_effect.setOpacity(0)
+        self.prevButton = QPushButton(self)

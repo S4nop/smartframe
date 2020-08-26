@@ -1,8 +1,8 @@
 import sys
-from Client.GUIManager import MainForm
+from Client.MainActivity import MainWindow
 from PyQt5.QtWidgets import *
 
 app = QApplication(sys.argv)
-w = MainForm()
+w = MainWindow()
 sys.exit(app.exec())
 

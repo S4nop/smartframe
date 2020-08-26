@@ -1,10 +1,10 @@
 import os
 import cv2
-import subprocess
 import threading
 from PyQt5.QtGui import *
 import numpy as np
 from Client.BufferManager import BufferManager
+import Client.Utils as utils
 
 
 class MediaManager:
@@ -72,7 +72,7 @@ class MediaManager:
         return img
 
     def __getProperSizeOfImg(self, img):
-        width, height = self.__getFrameSize()
+        width, height = utils.getFrameSize()
         imHeight = img.shape[0]
         imWidth = img.shape[1]
         width = int(width)
@@ -84,15 +84,3 @@ class MediaManager:
             return newWidth, height, abs(int((width - newWidth) / 2)) + 2, 0
         else:
             return width, newHeight, 0, abs(int((height - newHeight) / 2)) + 2
-
-    def __getFrameSize(self):
-        cmd = ['xrandr']
-        cmd2 = ['grep', '*']
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        p2 = subprocess.Popen(cmd2, stdin=p.stdout, stdout=subprocess.PIPE)
-        p.stdout.close()
-
-        resolution_string, junk = p2.communicate()
-        resolution = resolution_string.split()[0]
-        width, height = resolution.decode('utf-8').split("x")
-        return width, height
