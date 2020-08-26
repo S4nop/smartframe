@@ -12,7 +12,7 @@ class MainForm(QMainWindow):
         self.initUI()
         self.show()
         self.buffer_manager = BufferManager()
-        self.media_manager = MediaManager()
+        self.media_manager = MediaManager(self.buffer_manager)
         self.file_manager = FileManager()
         work_thread = threading.Thread(target=self.work_inThread, daemon=True)
         work_thread.start()
@@ -46,28 +46,29 @@ class MainForm(QMainWindow):
     def loadMedia_inThread(self, file_idx, toPrev=False):
         filename = self.file_manager.getFilenameByIdx(file_idx)
         isImage = self.file_manager.chkIsImage(file_idx)
-        targ = self.media_manager.loadImage(filename) if isImage else self.media_manager.loadVideo(filename)
-
-        if toPrev:
-            self.buffer_manager.pushToNext()
-            self.buffer_manager.setPrevBuffer([file_idx, targ])
-        else:
-            self.buffer_manager.pullToPrev()
-            self.buffer_manager.setNextBuffer([file_idx, targ])
+        self.media_manager.loadImage(filename) if isImage else self.media_manager.loadVideo(filename)
 
     def showMedia_inThread(self):
-        idx, med = self.buffer_manager.getMainBuffer()
-        if idx < 0:
+        isVideo, med = self.buffer_manager.getMainBuffer()
+        if med is None:
             return
-        isImage = self.file_manager.chkIsImage(idx)
 
-        if isImage:
+        if not isVideo:
             self.imageLabel.setPixmap(med)
             self.setCentralWidget(self.imageLabel)
             time.sleep(3)
         else:
-            for frame in med:
+            while(True):
+                ret, frame = self.buffer_manager.popFromQueue()
+                if not ret:
+                    return
                 self.imageLabel.setPixmap(frame)
                 time.sleep(0.0422225)
+            #self.imageLabel.setPixmap(med)
+            #self.setCentralWidget(self.imageLabel)
+            #time.sleep(3)
+            #for frame in med:
+            #    time.sleep(0.0422225)
+            #    self.imageLabel.setPixmap(frame)
 
 
