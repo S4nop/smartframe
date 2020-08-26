@@ -49,26 +49,22 @@ class MainForm(QMainWindow):
         self.media_manager.loadImage(filename) if isImage else self.media_manager.loadVideo(filename)
 
     def showMedia_inThread(self):
-        isVideo, med = self.buffer_manager.getMainBuffer()
+        isImage, med = self.buffer_manager.getMainBuffer()
         if med is None:
             return
 
-        if not isVideo:
+        if isImage:
             self.imageLabel.setPixmap(med)
             self.setCentralWidget(self.imageLabel)
             time.sleep(3)
         else:
+            sender_thread = threading.Thread(target=self.media_manager.sendFramesToBuffer, args=(med,), daemon=True)
+            sender_thread.start()
             while(True):
                 ret, frame = self.buffer_manager.popFromQueue()
                 if not ret:
                     return
                 self.imageLabel.setPixmap(frame)
                 time.sleep(0.0422225)
-            #self.imageLabel.setPixmap(med)
-            #self.setCentralWidget(self.imageLabel)
-            #time.sleep(3)
-            #for frame in med:
-            #    time.sleep(0.0422225)
-            #    self.imageLabel.setPixmap(frame)
 
 

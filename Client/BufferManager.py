@@ -40,6 +40,9 @@ class BufferManager:
     def popFromQueue(self):
         return self.frameBuffer.get()
 
+    def queueTaskDone(self):
+        self.frameBuffer.task_done()
+
     def __init__(self):
         self.prevBuffer = [True, None]
         self.mainBuffer = [True, None]

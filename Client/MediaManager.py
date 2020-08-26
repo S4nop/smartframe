@@ -20,9 +20,9 @@ class MediaManager:
         image = cv2.cvtColor(self.__resize(image, self.__getProperSizeOfImg(image)), cv2.COLOR_BGR2RGB)
         result = QPixmap.fromImage(self.__toQImage(image))
         if toPrev:
-            self.buffer_manager.putPrevBuffer([False, result])
+            self.buffer_manager.putPrevBuffer([True, result])
         else:
-            self.buffer_manager.putNextBuffer([False, result])
+            self.buffer_manager.putNextBuffer([True, result])
 
     def loadVideo(self, filename, toPrev=False):
         cap = cv2.VideoCapture(filename)
@@ -30,17 +30,14 @@ class MediaManager:
             return None
 
         if toPrev:
-            self.buffer_manager.putPrevBuffer(cap.read())
+            self.buffer_manager.putPrevBuffer([False, cap])
         else:
-            self.buffer_manager.putNextBuffer(cap.read())
-
-        sender_thread = threading.Thread(target=self.sendFramesToBuffer, args=(cap, ), daemon=True)
-        sender_thread.start()
+            self.buffer_manager.putNextBuffer([False, cap])
 
     def sendFramesToBuffer(self, cap):
         ret, frame = cap.read()
         width, height, bWidth, bHeight = self.__getProperSizeOfImg(frame)
-        while(cap.isOpened()):
+        while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
@@ -48,9 +45,10 @@ class MediaManager:
             frame = self.__toQImage(self.__resize(frame, [width, height, bWidth, bHeight]))
             frame = QPixmap.fromImage(frame)
             self.buffer_manager.addToQueue([True, frame])
+            self.buffer_manager.queueTaskDone()
 
         self.buffer_manager.addToQueue([False, None])
-
+        self.buffer_manager.queueTaskDone()
 
     def __toQImage(self, im, copy=False):
         if im.dtype == np.uint8:
@@ -66,7 +64,6 @@ class MediaManager:
                 elif im.shape[2] == 4:
                     qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_ARGB32)
                     return qim.copy() if copy else qim
-
 
     def __resize(self, img, size):
         width, height, bWidth, bHeight = size
