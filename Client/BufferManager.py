@@ -7,15 +7,15 @@ class BufferManager:
     nextBuffer: object
 
     def putPrevBuffer(self, obj):
-        self.prevBuffer = obj
         self.pushToNext()
+        self.prevBuffer = obj
 
     def setMainBuffer(self, obj):
         self.mainBuffer = obj
 
     def putNextBuffer(self, obj):
-        self.nextBuffer = obj
         self.pullToPrev()
+        self.nextBuffer = obj
 
     def getPrevBuffer(self):
         return self.prevBuffer
@@ -29,10 +29,12 @@ class BufferManager:
     def pushToNext(self):
         self.nextBuffer = self.mainBuffer
         self.mainBuffer = self.prevBuffer
+        self.prevBuffer = [-1, -1, None]
 
     def pullToPrev(self):
         self.prevBuffer = self.mainBuffer
         self.mainBuffer = self.nextBuffer
+        self.nextBuffer = [-1, -1, None]
 
     def addToQueue(self, obj):
         self.frameBuffer.put(obj)
@@ -40,11 +42,14 @@ class BufferManager:
     def popFromQueue(self):
         return self.frameBuffer.get()
 
+    def clearQueue(self):
+        self.frameBuffer = Queue()
+
     def queueTaskDone(self):
         self.frameBuffer.task_done()
 
     def __init__(self):
-        self.prevBuffer = [True, None]
-        self.mainBuffer = [True, None]
-        self.nextBuffer = [True, None]
+        self.prevBuffer = [True, -1, None]
+        self.mainBuffer = [True, -1, None]
+        self.nextBuffer = [True, -1, None]
         self.frameBuffer = Queue()

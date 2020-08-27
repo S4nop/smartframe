@@ -13,26 +13,24 @@ class MediaManager:
     def __init__(self, buffer_manager):
         self.buffer_manager = buffer_manager
 
-    def loadImage(self, filename, toPrev=False):
+    def loadImage(self, filename, idx, toPrev=False):
         image = cv2.imread(filename)
-        if image is None:
-            return None
-        image = cv2.cvtColor(self.__resize(image, self.__getProperSizeOfImg(image)), cv2.COLOR_BGR2RGB)
-        result = QPixmap.fromImage(self.__toQImage(image))
+        result = None
+        if image is not None:
+            image = cv2.cvtColor(self.__resize(image, self.__getProperSizeOfImg(image)), cv2.COLOR_BGR2RGB)
+            result = QPixmap.fromImage(self.__toQImage(image))
         if toPrev:
-            self.buffer_manager.putPrevBuffer([True, result])
+            self.buffer_manager.putPrevBuffer([True, idx, result])
         else:
-            self.buffer_manager.putNextBuffer([True, result])
+            self.buffer_manager.putNextBuffer([True, idx, result])
 
-    def loadVideo(self, filename, toPrev=False):
+    def loadVideo(self, filename, idx, toPrev=False):
         cap = cv2.VideoCapture(filename)
-        if cap is None:
-            return None
 
         if toPrev:
-            self.buffer_manager.putPrevBuffer([False, cap])
+            self.buffer_manager.putPrevBuffer([False, idx, cap])
         else:
-            self.buffer_manager.putNextBuffer([False, cap])
+            self.buffer_manager.putNextBuffer([False, idx, cap])
 
     def sendFramesToBuffer(self, cap):
         ret, frame = cap.read()
