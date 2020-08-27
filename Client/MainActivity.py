@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
-from PyQt5.QtCore import Qt, QDir
 from Client.FileManager import FileManager
 from Client.MediaManager import MediaManager
 from Client.BufferManager import BufferManager
@@ -26,6 +25,7 @@ class MainWindow(QMainWindow):
         self.stop_request = False
         self.now_page = -1
         self.loadPageToBuffer(0)
+        self.join_checker()
         self.work_thread = threading.Thread(target=self.work_inThread, daemon=True)
         self.work_thread.start()
 
@@ -37,43 +37,41 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Image Viewer")
         self.showFullScreen()
 
-    def findBufferByIdx(self, idx):
-        print(idx, self.now_page)
-        if idx == self.now_page:
-            return False, self.buffer_manager.getMainBuffer()
-        elif idx == self.now_page - 1:
-            return True, self.buffer_manager.getPrevBuffer()
-        elif idx == self.now_page + 1:
-            return False, self.buffer_manager.getNextBuffer()
-        else:
-            return None
-
-    def mov_page(self, idx, in_thread=True):
-        toPrev, buf = self.findBufferByIdx(idx)
+    def mov_page(self, idx):
+        toPrev, buf = self.__findBufferByIdx(idx)
+        if buf is None:
+            return
         self.viewer_thread = threading.Thread(target=self.showMedia_inThread,
                                          args=(buf, 3, ), daemon=True)
         self.viewer_thread.start()
         self.loadPageToBuffer(idx-1 if toPrev else idx+1, toPrev)
-        self.viewer_thread.join()
+        self.join_checker()
 
     def loadPageToBuffer(self, idx, toPrev=False):
         self.loader_thread = threading.Thread(target=self.loadMedia_inThread, args=(idx, toPrev), daemon=True)
         self.loader_thread.start()
-        self.loader_thread.join()
+
+    def join_checker(self):
+        if hasattr(self, 'loader_thread'):
+            self.loader_thread.join()
+        if hasattr(self, 'viewer_thread'):
+            self.viewer_thread.join()
 
     def work_inThread(self, start_page=0):
         num = self.file_manager.getNumOfFiles()
-        #self.loadPageToBuffer(0)
-        for i in range(start_page, num):
-            self.mov_page(i)
-            if self.stop_request:
-                self.stop_request = False
-                return
+        if start_page >= num:
+            start_page = 0
+        while True:
+            for i in range(start_page, num):
+                self.mov_page(i)
+                if self.stop_request:
+                    self.stop_request = False
+                    return
+            start_page = 0
 
     def loadMedia_inThread(self, file_idx, toPrev=False):
-        if file_idx < 0 or file_idx >= self.file_manager.getNumOfFiles():
-            self.buffer_manager.pushToNext() if toPrev else self.buffer_manager.pullToPrev()
-            return
+        if file_idx >= self.file_manager.getNumOfFiles():
+            file_idx = 0
         filename = self.file_manager.getFilenameByIdx(file_idx)
         isImage = self.file_manager.chkIsImage(file_idx)
         self.media_manager.loadImage(filename, file_idx, toPrev) if isImage else self.media_manager.loadVideo(filename, file_idx, toPrev)
@@ -84,16 +82,15 @@ class MainWindow(QMainWindow):
             print("Buffer is empty")
             return
         self.now_page = idx
-        print(self.now_page)
         if isImage:
+            timer = 0
             self.imageLabel.setPixmap(med)
-            sum = 0
-            while not self.stop_request and sum < sleep_time:
+            while not self.stop_request and timer < sleep_time:
                 time.sleep(0.5)
-                sum += 0.5
+                timer += 0.5
         else:
             self.buffer_manager.clearQueue()
-            self.sender_thread = ThreadWithExc(target=self.media_manager.sendFramesToBuffer, args=(med,), daemon=True)
+            self.sender_thread = ThreadWithExc(target=self.media_manager.sendFramesToBuffer, args=(med[0], med[1]), daemon=True)
             self.sender_thread.start()
             while True:
                 ret, frame = self.buffer_manager.popFromQueue()
@@ -108,17 +105,25 @@ class MainWindow(QMainWindow):
         self.work_thread.join()
         self.work_thread = threading.Thread(target=self.work_inThread, args=(self.now_page-1, ), daemon=True)
         self.work_thread.start()
-        #self.mov_page(self.now_page-1, True, False)
 
     def nextBtn_Click(self):
         self.stop_request = True
         self.work_thread.join()
         self.work_thread = threading.Thread(target=self.work_inThread, args=(self.now_page+1, ), daemon=True)
         self.work_thread.start()
-        #self.mov_page(self.now_page+1, False, False)
 
     def menuBtn_Click(self):
         pass
+
+    def __findBufferByIdx(self, idx):
+        if idx == self.buffer_manager.mainIdx:
+            return False, self.buffer_manager.getMainBuffer()
+        elif idx == self.buffer_manager.prevIdx:
+            return True, self.buffer_manager.getPrevBuffer()
+        elif idx == self.buffer_manager.nextIdx:
+            return False, self.buffer_manager.getNextBuffer()
+        else:
+            return True, None
 
     def __initImageViewer(self):
         self.imageLabel = QLabel(self)

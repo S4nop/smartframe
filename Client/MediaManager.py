@@ -28,11 +28,13 @@ class MediaManager:
         cap = cv2.VideoCapture(filename)
 
         if toPrev:
-            self.buffer_manager.putPrevBuffer([False, idx, cap])
+            self.buffer_manager.putPrevBuffer([False, idx, [cap, filename]])
         else:
-            self.buffer_manager.putNextBuffer([False, idx, cap])
+            self.buffer_manager.putNextBuffer([False, idx, [cap, filename]])
 
-    def sendFramesToBuffer(self, cap):
+    def sendFramesToBuffer(self, cap, filename):
+        if not cap.isOpened():
+            cap = cv2.VideoCapture(filename)
         ret, frame = cap.read()
         width, height, bWidth, bHeight = self.__getProperSizeOfImg(frame)
         while cap.isOpened():
@@ -44,6 +46,7 @@ class MediaManager:
             frame = QPixmap.fromImage(frame)
             self.buffer_manager.addToQueue([True, frame])
             self.buffer_manager.queueTaskDone()
+        cap.release()
 
         self.buffer_manager.addToQueue([False, None])
         self.buffer_manager.queueTaskDone()
