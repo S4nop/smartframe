@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.media_manager = MediaManager(self.buffer_manager)
         self.file_manager = FileManager()
         self.stop_request = False
+        self.onoffStatus = True
         self.now_page = -1
         self.loadPageToBuffer(0)
         self.join_checker()
@@ -31,9 +32,10 @@ class MainWindow(QMainWindow):
 
     def initUI(self):
         self.frame_width, self.frame_height = utils.getFrameSize()
+        self.setStyleSheet("background-color : black")
         self.__initImageViewer()
         self.__initNextPrevBtn()
-        self.__initMenuButton()
+        self.__initOnOffButton()
         self.setWindowTitle("Image Viewer")
         self.showFullScreen()
 
@@ -112,8 +114,21 @@ class MainWindow(QMainWindow):
         self.work_thread = threading.Thread(target=self.work_inThread, args=(self.now_page+1, ), daemon=True)
         self.work_thread.start()
 
-    def menuBtn_Click(self):
-        pass
+    def onoffBtn_Click(self):
+        if self.onoffStatus:
+            self.onoffStatus = False
+            self.stop_request = True
+            self.work_thread.join()
+            self.__makeInvisible(self.imageLabel, 0)
+            self.prevButton.setEnabled(False)
+            self.nextButton.setEnabled(False)
+        else:
+            self.onoffStatus = True
+            self.__makeInvisible(self.imageLabel, 1)
+            self.prevButton.setEnabled(True)
+            self.nextButton.setEnabled(True)
+            self.work_thread = threading.Thread(target=self.work_inThread, args=(self.now_page, ), daemon=True)
+            self.work_thread.start()
 
     def __findBufferByIdx(self, idx):
         if idx == self.buffer_manager.mainIdx:
@@ -132,25 +147,27 @@ class MainWindow(QMainWindow):
         self.imageLabel.move(0, 0)
         self.imageLabel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
 
-    def __initMenuButton(self):
-        self.menuButton = QPushButton('MENU', self)
-        self.menuButton.setGeometry(int(self.frame_width / 10 * 9), 0, int(self.frame_width / 10), int(self.frame_height / 6))
-        self.menuButton.setStyleSheet("background-color : white")
-        self.menuButton.clicked.connect(self.menuBtn_Click)
+    def __initOnOffButton(self):
+        self.onoffButton = QPushButton('On/Off', self)
+        self.onoffButton.setGeometry(int(self.frame_width / 10 * 9), 0,
+                                     int(self.frame_width / 10), int(self.frame_height / 6))
+        self.onoffButton.setStyleSheet("background-color : white")
+        self.onoffButton.clicked.connect(self.onoffBtn_Click)
 
     def __initNextPrevBtn(self):
         self.prevButton = QPushButton(self)
         self.prevButton.setGeometry(0, 0, int(self.frame_width / 5), self.frame_height)
         self.prevButton.clicked.connect(self.prevBtn_Click)
-        self.__makeInvisible(self.prevButton)
+        self.__makeInvisible(self.prevButton, 0)
         self.nextButton = QPushButton(self)
-        self.nextButton.setGeometry(int(self.frame_width / 5 * 4), 0, int(self.frame_width / 5), self.frame_height)
+        self.nextButton.setGeometry(int(self.frame_width / 5 * 4), 0,
+                                    int(self.frame_width / 5), self.frame_height)
         self.nextButton.clicked.connect(self.nextBtn_Click)
-        self.__makeInvisible(self.nextButton)
+        self.__makeInvisible(self.nextButton, 0)
 
-    def __makeInvisible(self, widget):
+    def __makeInvisible(self, widget, opacity):
         opacity_effect = QGraphicsOpacityEffect()
-        opacity_effect.setOpacity(0)
+        opacity_effect.setOpacity(opacity)
         widget.setGraphicsEffect(opacity_effect)
 
     def __initPrevBtn(self):
